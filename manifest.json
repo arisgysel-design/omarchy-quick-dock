@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "arisgysel-design.quick-dock",
+  "name": "Quick Dock",
+  "version": "1.0.0",
+  "author": "Aris Gysel",
+  "license": "MIT",
+  "homepage": "https://github.com/arisgysel-design/omarchy-quick-dock",
+  "description": "A summoned dock for up to eight favourite apps. Open it with a shortcut, start an app with a click or a number key, and close it with Escape. Apps are listed in shell.json and use your theme's menu colors.",
+  "kinds": [
+    "menu"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "menu": "QuickDock.qml"
+  }
+}

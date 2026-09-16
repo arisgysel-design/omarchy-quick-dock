@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Optional helper for a close key such as Super+W: hides Quick Dock when it is
+# open, otherwise closes the active window.
+#
+# Hyprland, not the shell, answers whether the dock is open, so closing windows
+# keeps working even when omarchy-shell is slow, hung or not running.
+
+set -uo pipefail
+
+# Must match manifest.json and `layerNamespace` in QuickDock.qml (checked by tests).
+readonly PLUGIN_ID="arisgysel-design.quick-dock"
+readonly LAYER_NAMESPACE="quick-dock"
+readonly HIDE_TIMEOUT_SECONDS=2
+
+dock_is_open() {
+  # Read the whole output first. Piped into `grep -q`, hyprctl can still be
+  # writing after the match; the broken pipe then fails the pipeline under
+  # pipefail and an open dock would be reported as closed.
+  local layers pattern
+  layers=$(hyprctl layers -j 2>/dev/null) || return 1
+  # Matches the exact JSON string value, so "quick-dock-preview" does not count.
+  pattern="\"namespace\": *\"${LAYER_NAMESPACE}\""
+  [[ $layers =~ $pattern ]]
+}
+
+if dock_is_open; then
+  # While the dock is visible the key belongs to it; never close the window
+  # underneath, even if hiding fails.
+  timeout "$HIDE_TIMEOUT_SECONDS" omarchy-shell shell hide "$PLUGIN_ID" >/dev/null 2>&1 || true
+else
+  hyprctl dispatch 'hl.dsp.window.close()' >/dev/null
+fi
