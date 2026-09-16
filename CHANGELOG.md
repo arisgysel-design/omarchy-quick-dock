@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 - 2026-09-16
+
+- Leave windows untouched when the close helper cannot determine the dock state
+- Shrink icons along with cells to fit narrow or heavily scaled outputs
+- Preserve app IDs that match JavaScript prototype names, such as `constructor`
+
 ## 1.0.0 - 2026-09-16
 
 First release.

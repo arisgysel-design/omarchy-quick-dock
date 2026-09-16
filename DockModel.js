@@ -73,7 +73,7 @@ function appsFromShellConfig(text, pluginId) {
 // position; at most MAX_APPS items are returned.
 function resolveApps(apps, lookup) {
   var items = []
-  var seen = {}
+  var seen = Object.create(null)
   for (var i = 0; i < apps.length && items.length < MAX_APPS; i++) {
     var app = apps[i]
     var ids = lookupIds(app.id)
@@ -96,6 +96,16 @@ function resolveApps(apps, lookup) {
 
 function sameItems(a, b) {
   return JSON.stringify(a) === JSON.stringify(b)
+}
+
+// Fit the whole row, including the selected icon's zoom, into the available
+// content width. Narrow outputs may require shrinking icons as well as cells.
+function fitRow(count, availableWidth, preferredCellWidth, preferredIconSize, iconScale, cellInsets) {
+  var cellWidth = Math.max(0, Math.min(preferredCellWidth,
+    Math.floor(availableWidth / Math.max(1, count))))
+  var iconSize = Math.max(0, Math.min(preferredIconSize,
+    Math.floor((cellWidth - cellInsets) / iconScale)))
+  return { cellWidth: cellWidth, iconSize: iconSize }
 }
 
 // Moves a selection by delta, wrapping around. Returns -1 for an empty dock.

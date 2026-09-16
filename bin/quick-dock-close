@@ -12,18 +12,22 @@ readonly PLUGIN_ID="arisgysel-design.quick-dock"
 readonly LAYER_NAMESPACE="quick-dock"
 readonly HIDE_TIMEOUT_SECONDS=2
 
-dock_is_open() {
-  # Read the whole output first. Piped into `grep -q`, hyprctl can still be
-  # writing after the match; the broken pipe then fails the pipeline under
-  # pipefail and an open dock would be reported as closed.
-  local layers pattern
-  layers=$(hyprctl layers -j 2>/dev/null) || return 1
-  # Matches the exact JSON string value, so "quick-dock-preview" does not count.
-  pattern="\"namespace\": *\"${LAYER_NAMESPACE}\""
-  [[ $layers =~ $pattern ]]
-}
+# An unknown state must never turn a dock-close key into a window-close key.
+# Read the complete response before parsing it, avoiding broken-pipe failures.
+layers=$(hyprctl layers -j 2>/dev/null) || exit 1
+dock_open=$(jq -sr --arg namespace "$LAYER_NAMESPACE" '
+  if length != 1 then error("expected one layers response") else .[0] end
+  | if type != "object" then error("expected layers object") else . end
+  | [ .[] | .levels
+      | if type != "object" then error("expected levels object") else . end
+      | to_entries[] | .value
+      | if type != "array" then error("expected layer array") else .[] end
+      | .namespace ]
+  | if all(.[]; type == "string") then any(.[]; . == $namespace)
+    else error("invalid layer namespace") end
+' <<< "$layers" 2>/dev/null) || exit 1
 
-if dock_is_open; then
+if [[ $dock_open == true ]]; then
   # While the dock is visible the key belongs to it; never close the window
   # underneath, even if hiding fails.
   timeout "$HIDE_TIMEOUT_SECONDS" omarchy-shell shell hide "$PLUGIN_ID" >/dev/null 2>&1 || true

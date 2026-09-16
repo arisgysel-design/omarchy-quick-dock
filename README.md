@@ -20,7 +20,7 @@ app starts. The dock takes no screen space until you call it.
 Omarchy 4 with its Quickshell-based shell and Hyprland. Tested on
 **Omarchy 4.0.4, Hyprland 0.56.2 and Quickshell 0.3.1**.
 
-The optional close helper uses `bash`, `hyprctl` and `timeout`, which ship
+The optional close helper uses `bash`, `hyprctl`, `jq` and `timeout`, which ship
 with Omarchy.
 
 ## Install
@@ -105,6 +105,8 @@ o.bind("SUPER + W", "Close window or Quick Dock",
 The `if` keeps `Super + W` closing windows even after the plugin is removed.
 The helper asks Hyprland, not the shell, whether the dock is open. As a result,
 closing windows keeps working when `omarchy-shell` is slow or not running.
+If Hyprland's layer query fails or returns invalid data, the helper leaves
+windows untouched; press the shortcut again once Hyprland responds normally.
 
 After editing, validate the config:
 

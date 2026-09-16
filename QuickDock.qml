@@ -50,15 +50,17 @@ Item {
   readonly property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", Color.menu.selectedBorder, 0)
   readonly property string fontFamily: Style.font.menuFamily
 
-  readonly property int iconSize: Style.space(56)
+  readonly property int iconSize: rowLayout.iconSize
   readonly property real selectedIconScale: 1.08
   readonly property int preferredCellWidth: Style.space(124)
   // Shrink cells rather than overflow narrow or heavily scaled outputs.
-  readonly property int cellWidth: {
-    var count = Math.max(1, root.items.length)
+  readonly property var rowLayout: {
     var available = panel.width - Style.gapsOut * 2 - card.contentLeftInset - card.contentRightInset
-    return Math.max(root.iconSize, Math.min(root.preferredCellWidth, Math.floor(available / count)))
+    var insets = Border.left(selectedBorderSpec) + Border.right(selectedBorderSpec) + Style.space(8)
+    return DockModel.fitRow(root.items.length, available, root.preferredCellWidth,
+      Style.space(56), root.selectedIconScale, insets)
   }
+  readonly property int cellWidth: rowLayout.cellWidth
   readonly property int cellHeight: iconSize + Style.font.bodySmall + Style.space(26)
     + Border.top(selectedBorderSpec) + Border.bottom(selectedBorderSpec)
   readonly property int bottomMargin: Style.space(48)
@@ -303,7 +305,7 @@ Item {
               anchors.top: icon.bottom
               anchors.topMargin: Style.space(6)
               x: cell.reservedLeft + Style.space(4)
-              width: parent.width - cell.reservedLeft - cell.reservedRight - Style.space(8)
+              width: Math.max(0, parent.width - cell.reservedLeft - cell.reservedRight - Style.space(8))
               textFormat: Text.PlainText
               text: cell.modelData.name
               color: cell.selected ? root.selectedText : root.foreground

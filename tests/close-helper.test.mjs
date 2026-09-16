@@ -40,9 +40,9 @@ function run(t, { layersOutput = layers([]), layersExit = 0, slowLayers = false,
   };
   const file = join(dir, 'layers.json');
   // A slow writer is still writing after a reader such as `grep -q` has
-  // exited; `exec cat` then fails on the closed pipe, as hyprctl would.
+  // exited; `exec tail` then fails on the closed pipe, as hyprctl would.
   const printLayers = layersExit !== 0 ? `cat '${file}'; exit ${layersExit}`
-    : slowLayers ? `head -c 4096 '${file}'; sleep 0.3; exec cat '${file}'`
+    : slowLayers ? `head -c 4096 '${file}'; sleep 0.3; exec tail -c +4097 '${file}'`
     : `exec cat '${file}'`;
   stub('hyprctl', `[[ $1 == layers ]] && { ${printLayers}; }\nexit 0`);
   stub('omarchy-shell', shellHangs ? 'sleep 30' : 'exit 0');
@@ -95,16 +95,33 @@ test('a similar namespace does not count as the dock', t => {
   assert.equal(calls.at(-1), CLOSE_WINDOW);
 });
 
-test('unreadable layer output still closes the window', t => {
-  for (const layersOutput of ['', 'not json', '[]']) {
-    const { calls } = run(t, { layersOutput });
-    assert.equal(calls.at(-1), CLOSE_WINDOW, `for ${JSON.stringify(layersOutput)}`);
+test('unreadable or malformed layer output leaves windows untouched', t => {
+  for (const layersOutput of ['', 'not json', '[]', 'null', '{} {}',
+    '{"eDP-1":{}}', '{"eDP-1":{"levels":[]}}',
+    '{"eDP-1":{"levels":{"3":{}}}}',
+    '{"eDP-1":{"levels":{"3":[{}]}}}']) {
+    const { status, error, calls } = run(t, { layersOutput });
+    assert.ifError(error);
+    assert.equal(status, 1);
+    assert.deepEqual(calls, ['hyprctl layers -j'], `for ${JSON.stringify(layersOutput)}`);
   }
 });
 
-test('a failing layers query still closes the window', t => {
-  const { calls } = run(t, { layersOutput: layers(['quick-dock']), layersExit: 1 });
-  assert.equal(calls.at(-1), CLOSE_WINDOW);
+test('a failing layers query leaves windows untouched even with partial output', t => {
+  for (const layersOutput of ['', layers([]), layers(['quick-dock'])]) {
+    const { status, error, calls } = run(t, { layersOutput, layersExit: 1 });
+    assert.ifError(error);
+    assert.equal(status, 1);
+    assert.deepEqual(calls, ['hyprctl layers -j']);
+  }
+});
+
+test('valid compact JSON and escaped namespaces detect the dock', t => {
+  const layersOutput = layers(['quick-dock']).replace(/\n\s*/g, '').replace('quick-dock', 'quick-\\u0064ock');
+  const { status, error, calls } = run(t, { layersOutput });
+  assert.ifError(error);
+  assert.equal(status, 0);
+  assert.equal(calls.at(-1), `omarchy-shell shell hide ${manifest.id}`);
 });
 
 test('a hung shell cannot block the key, and the window under the dock survives', t => {

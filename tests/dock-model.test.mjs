@@ -138,6 +138,43 @@ test('the dock holds at most eight items, counting after duplicates are removed'
   assert.deepEqual(ids, ['app0', 'app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7']);
 });
 
+test('prototype-named desktop IDs survive resolution and are deduplicated', () => {
+  const ids = ['constructor', 'toString', '__proto__', 'hasOwnProperty'];
+  const apps = [...ids, ...ids].map(id => ({ id, name: '', icon: '' }));
+  for (const entries of [[], ids.map(id => entry(id))]) {
+    const items = resolve(apps, entries);
+    assert.deepEqual(items.map(item => item.id), ids);
+    assert.ok(items.every(item => item.available === (entries.length > 0)));
+  }
+});
+
+test('row layout preserves preferred dimensions when there is room', () => {
+  assert.deepEqual(plain(model.fitRow(8, 1200, 124, 56, 1.08, 8)),
+    { cellWidth: 124, iconSize: 56 });
+});
+
+test('all eight cells and their zoomed icons fit narrow and scaled outputs', () => {
+  for (const scale of [1, 1.5, 2, 3]) {
+    for (const outputWidth of [320, 400, 720, 1920]) {
+      const available = outputWidth - 10 - 16 * scale;
+      const insets = 12 * scale;
+      const { cellWidth, iconSize } = model.fitRow(8, available, 124 * scale, 56 * scale, 1.08, insets);
+      assert.ok(cellWidth * 8 <= available, `row overflow at ${outputWidth}, scale ${scale}`);
+      assert.ok(iconSize * 1.08 <= Math.max(0, cellWidth - insets), 'selected icon overflow');
+      assert.ok(cellWidth >= 0 && iconSize >= 0);
+    }
+  }
+});
+
+test('row layout handles an empty dock and an output not sized yet', () => {
+  assert.deepEqual(plain(model.fitRow(0, 400, 124, 56, 1.08, 8)),
+    { cellWidth: 124, iconSize: 56 });
+  for (const available of [0, -20]) {
+    assert.deepEqual(plain(model.fitRow(8, available, 124, 56, 1.08, 8)),
+      { cellWidth: 0, iconSize: 0 });
+  }
+});
+
 test('sameItems compares content, not identity', () => {
   assert.equal(model.sameItems([{ id: 'a', name: '', icon: '' }], [{ id: 'a', name: '', icon: '' }]), true);
   assert.equal(model.sameItems([{ id: 'a', name: '', icon: '' }], [{ id: 'a', name: 'A', icon: '' }]), false);
